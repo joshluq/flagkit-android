@@ -28,9 +28,19 @@ jobs:
                       classpath("org.sonarsource.scanner.gradle:sonarqube-gradle-plugin:4.4.1.3373")
                   }
               }
+          }
 
-              rootProject.allprojects {
-                  apply(plugin = "org.sonarqube")
+          gradle.rootProject {
+              afterEvaluate {
+                  try {
+                      println("Inyectando SonarQube via ClassLoader...")
+                      val pluginClass = buildscript.classLoader.loadClass("org.sonarqube.gradle.SonarQubePlugin")
+                      pluginManager.apply(pluginClass)
+                      println("¡SonarQube inyectado con éxito!")
+                  } catch (e: Exception) {
+                      println("Error inyectando Sonar: " + e.message)
+                      throw e
+                  }
               }
           }
           "@
