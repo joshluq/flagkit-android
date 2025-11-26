@@ -26,5 +26,5 @@ jobs:
             -e SONAR_TOKEN="${{ secrets.SONAR_TOKEN }}" `
             -e NEXUS_URL="http://host.docker.internal:8081/repository/android-releases/" `
             mobiledevops/android-sdk-image:34.0.0-jdk17 `
-            /bin/bash -c "chmod +x ./gradlew && ./gradlew clean assembleDebug sonar publishReleasePublicationToMyNexusRepository -Dsonar.host.url=http://host.docker.internal:9000 -Dsonar.login=${{ secrets.SONAR_TOKEN }} -Dsonar.projectKey=com.tuempresa:android-app"
+            /bin/bash -c "chmod +x ./gradlew && ./gradlew clean assembleDebug sonar publishReleasePublicationToMyNexusRepository -Dsonar.host.url=http://host.docker.internal:9000 -Dsonar.login=${{ secrets.SONAR_TOKEN }} -Dsonar.projectKey=es.joshluq.flagkit"
         shell: powershell
