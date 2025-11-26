@@ -20,21 +20,18 @@ jobs:
           $content = @"
           initscript {
               repositories {
-                  mavenCentral()
                   gradlePluginPortal()
+                  mavenCentral()
               }
               dependencies {
-                  // Aquí definimos la versión del plugin que queremos inyectar
-                  classpath("org.sonarqube:org.sonarqube.gradle.plugin:5.0.0.4638")
+                  classpath("org.sonarsource.scanner.gradle:sonarqube-gradle-plugin:4.4.1.3373")
               }
           }
-          
+
           allprojects {
-              // Aplicamos el plugin al proyecto raíz cuando esté listo
-              apply(plugin = "org.sonarqube")
+              apply<org.sonarqube.gradle.SonarQubePlugin>()
           }
           "@
-          # Guardamos el archivo en la raíz del workspace
           $content | Out-File -FilePath "sonar-injection.gradle.kts" -Encoding UTF8
         shell: powershell
 
