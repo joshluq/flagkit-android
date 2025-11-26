@@ -18,18 +18,20 @@ jobs:
       - name: Generate Gradle Init Script
         run: |
           $content = @"
-          initscript {
-              repositories {
-                  gradlePluginPortal()
-                  mavenCentral()
+          gradle.projectsLoaded {
+              rootProject.buildscript {
+                  repositories {
+                      gradlePluginPortal()
+                      mavenCentral()
+                  }
+                  dependencies {
+                      classpath("org.sonarsource.scanner.gradle:sonarqube-gradle-plugin:4.4.1.3373")
+                  }
               }
-              dependencies {
-                  classpath("org.sonarsource.scanner.gradle:sonarqube-gradle-plugin:4.4.1.3373")
-              }
-          }
 
-          allprojects {
-              apply<org.sonarqube.gradle.SonarQubePlugin>()
+              rootProject.allprojects {
+                  apply(plugin = "org.sonarqube")
+              }
           }
           "@
           $content | Out-File -FilePath "sonar-injection.gradle.kts" -Encoding UTF8
