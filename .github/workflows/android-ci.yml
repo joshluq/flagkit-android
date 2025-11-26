@@ -1,0 +1,30 @@
+name: Android CI On-Premise
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-publish:
+
+    runs-on: self-hosted 
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build, Analyze and Publish
+        # Ejecutamos un comando multilínea dentro del contenedor de Android
+        run: |
+          docker run --rm `
+            -v "${{ github.workspace }}:/workspace" `
+            -w /workspace `
+            -e NEXUS_USER="${{ secrets.NEXUS_USER }}" `
+            -e NEXUS_PASSWORD="${{ secrets.NEXUS_PASSWORD }}" `
+            -e SONAR_TOKEN="${{ secrets.SONAR_TOKEN }}" `
+            -e NEXUS_URL="http://host.docker.internal:8081/repository/android-releases/" `
+            mobiledevops/android-sdk-image:34.0.0-jdk17 `
+            /bin/bash -c "chmod +x ./gradlew && ./gradlew clean assembleDebug sonar publishReleasePublicationToMyNexusRepository -Dsonar.host.url=http://host.docker.internal:9000 -Dsonar.login=${{ secrets.SONAR_TOKEN }} -Dsonar.projectKey=com.tuempresa:android-app"
+        shell: powershell
