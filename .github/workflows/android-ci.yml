@@ -9,14 +9,36 @@ on:
 jobs:
   build-and-publish:
 
-    runs-on: self-hosted 
+    runs-on: self-hosted
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build, Analyze and Publish
-        # Ejecutamos un comando multilínea dentro del contenedor de Android
+      - name: Generate Gradle Init Script
+        run: |
+          $content = @"
+          initscript {
+              repositories {
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+              dependencies {
+                  // Aquí definimos la versión del plugin que queremos inyectar
+                  classpath("org.sonarqube:org.sonarqube.gradle.plugin:5.0.0.4638")
+              }
+          }
+          
+          allprojects {
+              // Aplicamos el plugin al proyecto raíz cuando esté listo
+              apply(plugin = "org.sonarqube")
+          }
+          "@
+          # Guardamos el archivo en la raíz del workspace
+          $content | Out-File -FilePath "sonar-injection.gradle.kts" -Encoding UTF8
+        shell: powershell
+
+      - name: Build and Publish
         run: |
           docker run --rm `
             -v "${{ github.workspace }}:/workspace" `
@@ -26,5 +48,5 @@ jobs:
             -e SONAR_TOKEN="${{ secrets.SONAR_TOKEN }}" `
             -e NEXUS_URL="http://host.docker.internal:8081/repository/android-releases/" `
             mobiledevops/android-sdk-image:34.0.0-jdk17 `
-            /bin/bash -c "sed -i 's/\r$//' ./gradlew && bash ./gradlew clean assembleDebug sonar publishReleasePublicationToNexusOnPremiseRepository -Dsonar.host.url=http://host.docker.internal:9000 -Dsonar.login=${{ secrets.SONAR_TOKEN }} -Dsonar.projectKey=es.joshluq.flagkit"
+            /bin/bash -c "sed -i 's/\r$//' ./gradlew && bash ./gradlew clean assembleDebug sonar publishReleasePublicationToNexusOnPremiseRepository --init-script /workspace/sonar-injection.gradle.kts -Dsonar.host.url=http://host.docker.internal:9000 -Dsonar.login=${{ secrets.SONAR_TOKEN }} -Dsonar.projectKey=es.joshluq.flagkit"
         shell: powershell
