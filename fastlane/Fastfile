@@ -22,9 +22,15 @@ platform :android do
                  "-Dsonar.host.url=#{ENV['SONAR_HOST_URL']} " +
                  "-Dsonar.token=#{ENV['SONAR_TOKEN']} " +
                  "-Dsonar.projectKey=#{ENV['SONAR_PROJECT_KEY']}:#{sonar_module_name} " +
-                 "-Dsonar.projectName='FlagKit - #{sonar_module_name}' " +
+                 "-Dsonar.projectName='#{sonar_module_name}' " +
                  "-Dsonar.includedModules=#{sonar_module_name}"
         )
       end
+    end
+
+    desc "Publica el artefacto en Nexus"
+    lane :publish_nexus do
+
+    gradle(task: "publishReleasePublicationToNexusOnPremiseRepository")
     end
 end
