@@ -4,7 +4,6 @@ platform :android do
 
   desc "Analiza el código con SonarQube"
   lane :scan_code do
-    sh("dos2unix ./gradlew")
 
     gradle(task: "clean assembleDebug")
 
@@ -19,7 +18,6 @@ platform :android do
 
   desc "Publica el artefacto en Nexus"
   lane :publish_nexus do
-    sh("dos2unix ./gradlew")
 
     gradle(task: "publishReleasePublicationToNexusOnPremiseRepository")
   end
