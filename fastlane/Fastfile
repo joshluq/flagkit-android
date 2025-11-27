@@ -9,7 +9,8 @@ platform :android do
 
     gradle(
       task: "sonar",
-      flags: "--init-script /workspace/sonar-injection.gradle.kts " +
+      flags: "--info --stacktrace " +
+             "--init-script /workspace/sonar-injection.gradle.kts " +
              "-Dsonar.host.url=#{ENV['SONAR_HOST_URL']} " +
              "-Dsonar.login=#{ENV['SONAR_TOKEN']} " +
              "-Dsonar.projectKey=#{ENV['SONAR_PROJECT_KEY']}"
