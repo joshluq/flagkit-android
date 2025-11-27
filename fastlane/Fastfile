@@ -28,18 +28,14 @@ platform :android do
       end
     end
 
-    desc "Publica el artefacto en Nexus"
+  desc "Publica el artefacto en Nexus"
     lane :publish_nexus do |options|
 
-    target_module = options[:module]
+        target_module = options[:module]
 
-    module_name_clean = target_module.delete_prefix(":")
+        UI.message("🚀 Publicando SOLO el módulo: #{target_module}")
 
-    UI.message("🚀 Publicando SOLO el módulo: #{target_module}")
+        sh("sed -i 's/\r$//' ./gradlew")
 
-    sh("sed -i 's/\r$//' ./gradlew")
-
-    gradle(
-      task: "#{target_module}:publishReleasePublicationToNexusOnPremiseRepository"
-    )
-end
+        gradle(task: "#{target_module}:publishReleasePublicationToNexusOnPremiseRepository")
+    end
