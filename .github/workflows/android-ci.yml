@@ -1,4 +1,4 @@
-name: Android CI On-Premise
+name: Android CI/CD On-Premise
 
 on:
   push:
@@ -7,55 +7,111 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build-and-publish:
-
+  # --------------------------------------------------------------------------
+  # JOB 1: PREPARACIÓN DEL ENTORNO
+  # Construye la imagen Docker con Fastlane y Ruby preinstalados.
+  # --------------------------------------------------------------------------
+  setup_env:
+    name: Build Docker Environment
     runs-on: self-hosted
-
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Generate Gradle Init Script
+      - name: Build Custom Docker Image
+        # Construye la imagen basada en tu Dockerfile local
+        # Docker usará su propia caché si el Dockerfile no ha cambiado
+        run: docker build -t my-ci-image .
+        shell: powershell
+
+  # --------------------------------------------------------------------------
+  # JOB 2: QUALITY GATE (SONARQUBE)
+  # Ejecuta análisis estático. Si falla, detiene el pipeline.
+  # --------------------------------------------------------------------------
+  quality_gate:
+    name: Code Analysis (SonarQube)
+    needs: setup_env
+    runs-on: self-hosted
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Paso crítico: Crear directorio de caché en el Host (Windows) si no existe
+      - name: Create Cache Directory
+        run: |
+          if (!(Test-Path "C:\gradle_cache")) {
+              New-Item -ItemType Directory -Force -Path "C:\gradle_cache"
+          }
+        shell: powershell
+
+      # Paso crítico: Generar el script de inyección para SonarQube
+      # Soluciona el error "BaseExtension" y "Plugin ID not found"
+      - name: Generate Sonar Injection Script
         run: |
           $content = @"
           gradle.projectsLoaded {
               rootProject.buildscript {
-                  repositories {
-                      gradlePluginPortal()
-                      mavenCentral()
-                  }
-                  dependencies {
-                      classpath("org.sonarsource.scanner.gradle:sonarqube-gradle-plugin:4.4.1.3373")
-                  }
+                  repositories { gradlePluginPortal(); mavenCentral() }
+                  dependencies { classpath("org.sonarsource.scanner.gradle:sonarqube-gradle-plugin:4.4.1.3373") }
               }
           }
-
           gradle.rootProject {
               afterEvaluate {
                   try {
-                      println("Inyectando SonarQube via ClassLoader...")
                       val pluginClass = buildscript.classLoader.loadClass("org.sonarqube.gradle.SonarQubePlugin")
                       pluginManager.apply(pluginClass)
-                      println("¡SonarQube inyectado con éxito!")
-                  } catch (e: Exception) {
-                      println("Error inyectando Sonar: " + e.message)
-                      throw e
-                  }
+                      println("✅ SonarQube Plugin Injected Successfully via ClassLoader")
+                  } catch (e: Exception) { println("❌ Error injecting Sonar: " + e.message) }
               }
           }
           "@
           $content | Out-File -FilePath "sonar-injection.gradle.kts" -Encoding UTF8
         shell: powershell
 
-      - name: Build and Publish
+      - name: Run Fastlane (Scan Code)
         run: |
           docker run --rm `
             -v "${{ github.workspace }}:/workspace" `
+            -v "C:\gradle_cache:/root/.gradle" `
+            -w /workspace `
+            -e SONAR_TOKEN="${{ secrets.SONAR_TOKEN }}" `
+            -e SONAR_PROJECT_KEY="es.joshluq.flagkit" `
+            -e SONAR_HOST_URL="http://host.docker.internal:9000" `
+            my-ci-image `
+            fastlane scan_code
+        shell: powershell
+
+  # --------------------------------------------------------------------------
+  # JOB 3: PUBLICACIÓN (NEXUS)
+  # Solo se ejecuta si Quality Gate pasa y estamos en la rama 'main'
+  # --------------------------------------------------------------------------
+  publish_artifact:
+    name: Publish to Nexus
+    needs: quality_gate
+    runs-on: self-hosted
+    # Condición de seguridad: Solo publicar desde main
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Create Cache Directory
+        run: |
+          if (!(Test-Path "C:\gradle_cache")) {
+              New-Item -ItemType Directory -Force -Path "C:\gradle_cache"
+          }
+        shell: powershell
+
+      - name: Run Fastlane (Publish Nexus)
+        run: |
+          docker run --rm `
+            -v "${{ github.workspace }}:/workspace" `
+            -v "C:\gradle_cache:/root/.gradle" `
             -w /workspace `
             -e NEXUS_USER="${{ secrets.NEXUS_USER }}" `
             -e NEXUS_PASSWORD="${{ secrets.NEXUS_PASSWORD }}" `
-            -e SONAR_TOKEN="${{ secrets.SONAR_TOKEN }}" `
             -e NEXUS_URL="http://host.docker.internal:8081/repository/android-releases/" `
-            mobiledevops/android-sdk-image:34.0.0-jdk17 `
-            /bin/bash -c "sed -i 's/\r$//' ./gradlew && bash ./gradlew clean assembleDebug sonar publishReleasePublicationToNexusOnPremiseRepository --init-script /workspace/sonar-injection.gradle.kts -Dsonar.host.url=http://host.docker.internal:9000 -Dsonar.login=${{ secrets.SONAR_TOKEN }} -Dsonar.projectKey=es.joshluq.flagkit"
+            my-ci-image `
+            fastlane publish_nexus
         shell: powershell
