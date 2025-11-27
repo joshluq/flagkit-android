@@ -3,28 +3,28 @@ default_platform(:android)
 platform :android do
 
   desc "Analiza el código con SonarQube"
-  lane :scan_code do
-    if ENV['SONAR_TOKEN'].to_s.empty?
-      UI.user_error!("❌ ERROR CRÍTICO: La variable SONAR_TOKEN está vacía. Revisa tus GitHub Secrets.")
-    else
-      UI.success("✅ SONAR_TOKEN detectado (Longitud: #{ENV['SONAR_TOKEN'].length} caracteres)")
+
+    lane :scan_code do |options|
+
+      target_module = options[:module]
+
+      sonar_module_name = target_module.delete_prefix(":")
+
+      UI.message("🎯 Enfocando análisis en: #{target_module}")
+
+      gradle(task: "clean #{target_module}:assembleDebug")
+
+      if ENV['SONAR_TOKEN']
+        gradle(
+          task: "sonar",
+          flags: "--info " +
+                 "--init-script /workspace/sonar-injection.gradle.kts " +
+                 "-Dsonar.host.url=#{ENV['SONAR_HOST_URL']} " +
+                 "-Dsonar.token=#{ENV['SONAR_TOKEN']} " +
+                 "-Dsonar.projectKey=#{ENV['SONAR_PROJECT_KEY']}:#{sonar_module_name} " +
+                 "-Dsonar.projectName='FlagKit - #{sonar_module_name}' " +
+                 "-Dsonar.includedModules=#{sonar_module_name}"
+        )
+      end
     end
-    gradle(task: "clean assembleDebug")
-
-    gradle(
-      task: "sonar",
-      flags: "--info --stacktrace " +
-             "--init-script /workspace/sonar-injection.gradle.kts " +
-             "-Dsonar.host.url=#{ENV['SONAR_HOST_URL']} " +
-             "-Dsonar.token=#{ENV['SONAR_TOKEN']} " +
-             "-Dsonar.projectKey=#{ENV['SONAR_PROJECT_KEY']}"
-    )
-  end
-
-  desc "Publica el artefacto en Nexus"
-  lane :publish_nexus do
-
-    gradle(task: "publishReleasePublicationToNexusOnPremiseRepository")
-  end
-
 end

@@ -78,7 +78,7 @@ jobs:
             -e SONAR_PROJECT_KEY="es.joshluq.flagkit" `
             -e SONAR_HOST_URL="http://host.docker.internal:9000" `
             my-ci-image `
-            /bin/bash -c "sed -i 's/\r$//' ./gradlew && fastlane scan_code"
+            /bin/bash -c "sed -i 's/\r$//' ./gradlew && fastlane scan_code module:':flagkit'"
         shell: powershell
 
   # --------------------------------------------------------------------------
