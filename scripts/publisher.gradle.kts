@@ -45,7 +45,14 @@ afterEvaluate {
                 groupId = project.group.toString()
                 artifactId = project.name
 
-                version = project.version.toString()
+                val libraryVersion = project.findProperty("libraryVersion") as? String
+                version = if (!libraryVersion.isNullOrEmpty()) {
+                    println("Publisher: Usando versión inyectada: $libraryVersion")
+                    libraryVersion
+                } else {
+                    println("Publisher: Usando versión del proyecto: ${project.version}")
+                    project.version.toString()
+                }
 
                 pom {
                     name.set(project.name)
