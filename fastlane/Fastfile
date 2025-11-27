@@ -4,7 +4,11 @@ platform :android do
 
   desc "Analiza el código con SonarQube"
   lane :scan_code do
-
+    if ENV['SONAR_TOKEN'].to_s.empty?
+      UI.user_error!("❌ ERROR CRÍTICO: La variable SONAR_TOKEN está vacía. Revisa tus GitHub Secrets.")
+    else
+      UI.success("✅ SONAR_TOKEN detectado (Longitud: #{ENV['SONAR_TOKEN'].length} caracteres)")
+    end
     gradle(task: "clean assembleDebug")
 
     gradle(
@@ -12,7 +16,7 @@ platform :android do
       flags: "--info --stacktrace " +
              "--init-script /workspace/sonar-injection.gradle.kts " +
              "-Dsonar.host.url=#{ENV['SONAR_HOST_URL']} " +
-             "-Dsonar.login=#{ENV['SONAR_TOKEN']} " +
+             "-Dsonar.token=#{ENV['SONAR_TOKEN']} " +
              "-Dsonar.projectKey=#{ENV['SONAR_PROJECT_KEY']}"
     )
   end
