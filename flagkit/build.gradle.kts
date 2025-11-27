@@ -6,6 +6,7 @@ plugins {
 }
 
 version = android.defaultConfig.versionName ?: "1.0-SNAPSHOT"
+group = "es.joshluq.kit"
 
 android {
     namespace = "es.joshluq.flagkit"

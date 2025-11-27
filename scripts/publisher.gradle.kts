@@ -42,7 +42,7 @@ afterEvaluate {
             create<MavenPublication>("release") {
                 from(components["release"])
 
-                groupId = "es.joshluq.flagkit"
+                groupId = project.group.toString()
                 artifactId = project.name
 
                 version = project.version.toString()

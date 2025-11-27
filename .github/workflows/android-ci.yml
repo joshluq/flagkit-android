@@ -113,5 +113,5 @@ jobs:
             -e NEXUS_PASSWORD="${{ secrets.NEXUS_PASSWORD }}" `
             -e NEXUS_URL="http://host.docker.internal:8081/repository/android-releases/" `
             my-ci-image `
-            /bin/bash -c "sed -i 's/\r$//' ./gradlew && fastlane publish_nexus"
+            /bin/bash -c "sed -i 's/\r$//' ./gradlew && fastlane publish_nexus module:':flagkit'"
         shell: powershell

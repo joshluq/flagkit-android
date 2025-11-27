@@ -29,8 +29,17 @@ platform :android do
     end
 
     desc "Publica el artefacto en Nexus"
-    lane :publish_nexus do
+    lane :publish_nexus do |options|
 
-    gradle(task: "publishReleasePublicationToNexusOnPremiseRepository")
-    end
+    target_module = options[:module]
+
+    module_name_clean = target_module.delete_prefix(":")
+
+    UI.message("🚀 Publicando SOLO el módulo: #{target_module}")
+
+    sh("sed -i 's/\r$//' ./gradlew")
+
+    gradle(
+      task: "#{target_module}:publishReleasePublicationToNexusOnPremiseRepository"
+    )
 end
