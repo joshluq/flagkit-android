@@ -35,8 +35,6 @@ platform :android do
 
         UI.message("🚀 Publicando SOLO el módulo: #{target_module}")
 
-        sh("sed -i 's/\r$//' ./gradlew")
-
         gradle(task: "#{target_module}:publishReleasePublicationToNexusOnPremiseRepository")
     end
 end
