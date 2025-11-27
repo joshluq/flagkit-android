@@ -1,5 +1,7 @@
 FROM mobiledevops/android-sdk-image:34.0.0-jdk17
 
+USER root
+
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
