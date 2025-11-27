@@ -1,16 +1,10 @@
-name: Android CI/CD On-Premise
+name: Publish Release (Main)
 
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
 
 jobs:
-  # --------------------------------------------------------------------------
-  # JOB 1: PREPARACIÓN DEL ENTORNO
-  # Construye la imagen Docker con Fastlane y Ruby preinstalados.
-  # --------------------------------------------------------------------------
   setup_env:
     name: Build Docker Environment
     runs-on: self-hosted
@@ -19,15 +13,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build Custom Docker Image
-        # Construye la imagen basada en tu Dockerfile local
-        # Docker usará su propia caché si el Dockerfile no ha cambiado
         run: docker build -t my-ci-image .
         shell: powershell
 
-  # --------------------------------------------------------------------------
-  # JOB 2: QUALITY GATE (SONARQUBE)
-  # Ejecuta análisis estático. Si falla, detiene el pipeline.
-  # --------------------------------------------------------------------------
   quality_gate:
     name: Code Analysis (SonarQube)
     needs: setup_env
@@ -36,7 +24,16 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # Paso crítico: Crear directorio de caché en el Host (Windows) si no existe
+      - name: Read Configuration
+        id: config
+        shell: powershell
+        run: |
+          Get-Content "ci.properties" | ForEach-Object {
+              if ($_ -match "^(.*?)=(.*)$") {
+                  echo "$($matches[1])=$($matches[2])" >> $env:GITHUB_ENV
+              }
+          }
+
       - name: Create Cache Directory
         run: |
           if (!(Test-Path "C:\gradle_cache")) {
@@ -44,8 +41,6 @@ jobs:
           }
         shell: powershell
 
-      # Paso crítico: Generar el script de inyección para SonarQube
-      # Soluciona el error "BaseExtension" y "Plugin ID not found"
       - name: Generate Sonar Injection Script
         run: |
           $content = @"
@@ -60,7 +55,6 @@ jobs:
                   try {
                       val pluginClass = buildscript.classLoader.loadClass("org.sonarqube.gradle.SonarQubePlugin")
                       pluginManager.apply(pluginClass)
-                      println("✅ SonarQube Plugin Injected Successfully via ClassLoader")
                   } catch (e: Exception) { println("❌ Error injecting Sonar: " + e.message) }
               }
           }
@@ -78,23 +72,26 @@ jobs:
             -e SONAR_PROJECT_KEY="es.joshluq.flagkit" `
             -e SONAR_HOST_URL="http://host.docker.internal:9000" `
             my-ci-image `
-            /bin/bash -c "sed -i 's/\r$//' ./gradlew && fastlane scan_code module:':flagkit'"
+            /bin/bash -c "sed -i 's/\r$//' ./gradlew && fastlane scan_code module:'${{ env.MODULE_NAME }}'"
         shell: powershell
 
-  # --------------------------------------------------------------------------
-  # JOB 3: PUBLICACIÓN (NEXUS)
-  # Solo se ejecuta si Quality Gate pasa y estamos en la rama 'main'
-  # --------------------------------------------------------------------------
-  publish_artifact:
-    name: Publish to Nexus
+  publish_release:
+    name: Publish Release to Nexus
     needs: quality_gate
     runs-on: self-hosted
-    # Condición de seguridad: Solo publicar desde main
-    if: github.ref == 'refs/heads/main'
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Read Configuration
+        id: config
+        shell: powershell
+        run: |
+          Get-Content "ci.properties" | ForEach-Object {
+              if ($_ -match "^(.*?)=(.*)$") {
+                  echo "$($matches[1])=$($matches[2])" >> $env:GITHUB_ENV
+              }
+          }
 
       - name: Create Cache Directory
         run: |
@@ -103,7 +100,7 @@ jobs:
           }
         shell: powershell
 
-      - name: Run Fastlane (Publish Nexus)
+      - name: Run Fastlane (Publish Release)
         run: |
           docker run --rm `
             -v "${{ github.workspace }}:/workspace" `
@@ -113,5 +110,5 @@ jobs:
             -e NEXUS_PASSWORD="${{ secrets.NEXUS_PASSWORD }}" `
             -e NEXUS_URL="http://host.docker.internal:8081/repository/android-releases/" `
             my-ci-image `
-            /bin/bash -c "sed -i 's/\r$//' ./gradlew && fastlane publish_nexus module:':flagkit'"
+            /bin/bash -c "sed -i 's/\r$//' ./gradlew && fastlane publish_nexus module:'${{ env.MODULE_NAME }}' version:'${{ env.RELEASE_VERSION }}'"
         shell: powershell

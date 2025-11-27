@@ -1,0 +1,55 @@
+name: Deploy Snapshot (Develop)
+
+on:
+  push:
+    branches: [ "develop" ]
+
+jobs:
+  setup_env:
+    name: Build Docker Environment
+    runs-on: self-hosted
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Build Custom Docker Image
+        run: docker build -t my-ci-image .
+        shell: powershell
+
+  publish_snapshot:
+    name: Publish Snapshot to Nexus
+    needs: setup_env
+    runs-on: self-hosted
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Read Configuration
+        id: config
+        shell: powershell
+        run: |
+          Get-Content "ci.properties" | ForEach-Object {
+              if ($_ -match "^(.*?)=(.*)$") {
+                  echo "$($matches[1])=$($matches[2])" >> $env:GITHUB_ENV
+              }
+          }
+
+      - name: Create Cache Directory
+        run: |
+          if (!(Test-Path "C:\gradle_cache")) {
+              New-Item -ItemType Directory -Force -Path "C:\gradle_cache"
+          }
+        shell: powershell
+
+      - name: Run Fastlane (Publish Snapshot)
+        run: |
+          docker run --rm `
+            -v "${{ github.workspace }}:/workspace" `
+            -v "C:\gradle_cache:/root/.gradle" `
+            -w /workspace `
+            -e NEXUS_USER="${{ secrets.NEXUS_USER }}" `
+            -e NEXUS_PASSWORD="${{ secrets.NEXUS_PASSWORD }}" `
+            -e NEXUS_URL="http://host.docker.internal:8081/repository/android-releases/" `
+            my-ci-image `
+            /bin/bash -c "sed -i 's/\r$//' ./gradlew && fastlane publish_nexus module:'${{ env.MODULE_NAME }}' version:'${{ env.SNAPSHOT_VERSION }}'"
+        shell: powershell

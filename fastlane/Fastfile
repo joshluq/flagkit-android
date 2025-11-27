@@ -32,9 +32,15 @@ platform :android do
     lane :publish_nexus do |options|
 
         target_module = options[:module]
+        version_name = options[:version]
 
-        UI.message("🚀 Publicando SOLO el módulo: #{target_module}")
+        UI.message("🚀 Publicando SOLO el módulo: #{target_module} con versión: #{version_name}")
 
-        gradle(task: "#{target_module}:publishReleasePublicationToNexusOnPremiseRepository")
+        gradle(
+            task: "#{target_module}:publishReleasePublicationToNexusOnPremiseRepository",
+            properties: {
+                "libraryVersion" => version_name
+            }
+        )
     end
 end

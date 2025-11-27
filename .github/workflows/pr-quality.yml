@@ -1,0 +1,76 @@
+name: Code Quality Check (PR)
+
+on:
+  pull_request:
+    branches: [ "main", "develop" ]
+
+jobs:
+  setup_env:
+    name: Build Docker Environment
+    runs-on: self-hosted
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Build Custom Docker Image
+        run: docker build -t my-ci-image .
+        shell: powershell
+
+  quality_gate:
+    name: Code Analysis (SonarQube)
+    needs: setup_env
+    runs-on: self-hosted
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Read Configuration
+        id: config
+        shell: powershell
+        run: |
+          Get-Content "ci.properties" | ForEach-Object {
+              if ($_ -match "^(.*?)=(.*)$") {
+                  echo "$($matches[1])=$($matches[2])" >> $env:GITHUB_ENV
+              }
+          }
+
+      - name: Create Cache Directory
+        run: |
+          if (!(Test-Path "C:\gradle_cache")) {
+              New-Item -ItemType Directory -Force -Path "C:\gradle_cache"
+          }
+        shell: powershell
+
+      - name: Generate Sonar Injection Script
+        run: |
+          $content = @"
+          gradle.projectsLoaded {
+              rootProject.buildscript {
+                  repositories { gradlePluginPortal(); mavenCentral() }
+                  dependencies { classpath("org.sonarsource.scanner.gradle:sonarqube-gradle-plugin:4.4.1.3373") }
+              }
+          }
+          gradle.rootProject {
+              afterEvaluate {
+                  try {
+                      val pluginClass = buildscript.classLoader.loadClass("org.sonarqube.gradle.SonarQubePlugin")
+                      pluginManager.apply(pluginClass)
+                  } catch (e: Exception) { println("❌ Error injecting Sonar: " + e.message) }
+              }
+          }
+          "@
+          $content | Out-File -FilePath "sonar-injection.gradle.kts" -Encoding UTF8
+        shell: powershell
+
+      - name: Run Fastlane (Scan Code)
+        run: |
+          docker run --rm `
+            -v "${{ github.workspace }}:/workspace" `
+            -v "C:\gradle_cache:/root/.gradle" `
+            -w /workspace `
+            -e SONAR_TOKEN="${{ secrets.SONAR_TOKEN }}" `
+            -e SONAR_PROJECT_KEY="es.joshluq.flagkit" `
+            -e SONAR_HOST_URL="http://host.docker.internal:9000" `
+            my-ci-image `
+            /bin/bash -c "sed -i 's/\r$//' ./gradlew && fastlane scan_code module:'${{ env.MODULE_NAME }}'"
+        shell: powershell
