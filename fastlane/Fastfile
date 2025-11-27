@@ -1,0 +1,27 @@
+default_platform(:android)
+
+platform :android do
+
+  desc "Analiza el código con SonarQube"
+  lane :scan_code do
+    sh("dos2unix ./gradlew")
+
+    gradle(task: "clean assembleDebug")
+
+    gradle(
+      task: "sonar",
+      flags: "--init-script /workspace/sonar-injection.gradle.kts " +
+             "-Dsonar.host.url=#{ENV['SONAR_HOST_URL']} " +
+             "-Dsonar.login=#{ENV['SONAR_TOKEN']} " +
+             "-Dsonar.projectKey=#{ENV['SONAR_PROJECT_KEY']}"
+    )
+  end
+
+  desc "Publica el artefacto en Nexus"
+  lane :publish_nexus do
+    sh("dos2unix ./gradlew")
+
+    gradle(task: "publishReleasePublicationToNexusOnPremiseRepository")
+  end
+
+end
