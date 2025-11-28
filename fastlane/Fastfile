@@ -14,7 +14,8 @@ platform :android do
 
       gradle(task: "clean #{target_module}:testDebugUnitTest #{target_module}:koverXmlReport")
 
-      report_path = "#{Dir.pwd}/#{sonar_module_name}/build/reports/kover/report.xml"
+      project_root = File.expand_path("..", Dir.pwd)
+      report_path = "#{project_root}/#{sonar_module_name}/build/reports/kover/report.xml"
       
       UI.message("📂 Ruta configurada para reporte de cobertura: #{report_path}")
 
