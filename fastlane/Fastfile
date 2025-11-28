@@ -12,8 +12,10 @@ platform :android do
 
       UI.message("🎯 Enfocando análisis en: #{target_module}")
 
+      # 1. Ejecutar Tests y Generar Reporte de Kover (XML)
       gradle(task: "clean #{target_module}:testDebugUnitTest #{target_module}:koverXmlReport")
 
+      # 2. Ejecutar SonarQube pasando la ruta del reporte
       if ENV['SONAR_TOKEN']
         gradle(
           task: "sonar",
@@ -24,7 +26,7 @@ platform :android do
                  "-Dsonar.projectKey=#{ENV['SONAR_PROJECT_KEY']}:#{sonar_module_name} " +
                  "-Dsonar.projectName='#{sonar_module_name}' " +
                  "-Dsonar.includedModules=#{sonar_module_name} " +
-                 "-Dsonar.coverage.jacoco.xmlReportPaths=#{target_module}/build/reports/kover/report.xml"
+                 "-Dsonar.coverage.jacoco.xmlReportPaths=#{sonar_module_name}/build/reports/kover/report.xml"
         )
       end
     end
