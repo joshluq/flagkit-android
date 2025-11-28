@@ -2,7 +2,7 @@ default_platform(:android)
 
 platform :android do
 
-  desc "Analiza el código con SonarQube"
+  desc "Analiza el código con SonarQube y reporta cobertura"
 
     lane :scan_code do |options|
 
@@ -12,7 +12,7 @@ platform :android do
 
       UI.message("🎯 Enfocando análisis en: #{target_module}")
 
-      gradle(task: "clean #{target_module}:assembleDebug")
+      gradle(task: "clean #{target_module}:testDebugUnitTest #{target_module}:koverXmlReport")
 
       if ENV['SONAR_TOKEN']
         gradle(
@@ -23,7 +23,8 @@ platform :android do
                  "-Dsonar.token=#{ENV['SONAR_TOKEN']} " +
                  "-Dsonar.projectKey=#{ENV['SONAR_PROJECT_KEY']}:#{sonar_module_name} " +
                  "-Dsonar.projectName='#{sonar_module_name}' " +
-                 "-Dsonar.includedModules=#{sonar_module_name}"
+                 "-Dsonar.includedModules=#{sonar_module_name} " +
+                 "-Dsonar.coverage.jacoco.xmlReportPaths=#{target_module}/build/reports/kover/report.xml"
         )
       end
     end
