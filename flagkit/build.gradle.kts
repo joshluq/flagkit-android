@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kover)
 }
 
 version = android.defaultConfig.versionName ?: "1.0-SNAPSHOT"
@@ -54,6 +55,21 @@ dependencies {
     testImplementation(libs.coroutines.test)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+}
+
+kover {
+    reports {
+        filters {
+            excludes {
+                // Exclusiones comunes de Android y código generado
+                classes(
+                    "*.BuildConfig",
+                    "*.R",
+                    "*.R$*"
+                )
+            }
+        }
+    }
 }
 
 apply(from = "${rootProject.rootDir}/scripts/publisher.gradle.kts")
