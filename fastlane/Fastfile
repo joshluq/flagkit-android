@@ -29,8 +29,6 @@ platform :android do
                  "-Dsonar.projectKey=#{ENV['SONAR_PROJECT_KEY']}:#{sonar_module_name} " +
                  "-Dsonar.projectName='#{sonar_module_name}' " +
                  "-Dsonar.includedModules=#{sonar_module_name} " +
-                 "-Dsonar.sources=#{sonar_module_name}/src/main/java " +
-                 "-Dsonar.tests=#{sonar_module_name}/src/test/java " +
                  "-Dsonar.exclusions=**/app/**,**/build/** " +
                  "-Dsonar.coverage.jacoco.xmlReportPaths=#{report_path}"
         )
